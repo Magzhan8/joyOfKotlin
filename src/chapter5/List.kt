@@ -15,7 +15,16 @@ sealed class List<A> {
 
     fun init(): List<A> = reverse().drop(1).reverse()
 
-    fun reverse(): List<A> = reverse(List.invoke(), this)
+    fun reverse(): List<A> = foldLeft(List.invoke(), { acc -> { acc.cons(it) } })
+
+    fun <B> foldRight(identity: B, f: (A) -> (B) -> B): B = foldRight(this, identity, f)
+
+    fun <B> foldRightViaFoldLeft(identity: B, f: (A) -> (B) -> B): B =
+        this.reverse().foldLeft(identity) { a -> { b -> f(b)(a) } }
+
+    fun <B> foldLeft(identity: B, f: (B) -> (A) -> B): B = foldLeft(this, identity, f)
+
+    fun length(): Int = foldRight(0) { { it + 1 } }
 
     abstract fun isEmpty(): Boolean
 
@@ -60,10 +69,25 @@ sealed class List<A> {
             }
 
         tailrec fun <A> reverse(acc: List<A>, list: List<A>): List<A> =
-            when(list) {
+            when (list) {
                 is Nil -> acc
                 is Cons -> reverse(acc.cons(list.head), list.tail)
             }
+
+        fun <A, B> foldRight(list: List<A>, identity: B, f: (A) -> (B) -> B): B =
+            when (list) {
+                List.Nil -> identity
+                is List.Cons -> f(list.head)(foldRight(list.tail, identity, f))
+            }
+
+        tailrec fun <A, B> foldLeft(list: List<A>, identity: B, f: (B) -> (A) -> B): B =
+            when (list) {
+                List.Nil -> identity
+                is List.Cons -> foldLeft(list.tail, f(identity)(list.head), f)
+            }
+
+        fun sum(list: List<Int>): Int = foldLeft(list, 0) { a -> { b -> a + b } }
+        fun product(list: List<Int>): Int = foldLeft(list, 1) { a -> { b -> a * b } }
     }
 
 }
