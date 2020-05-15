@@ -15,7 +15,7 @@ sealed class List<A> {
 
     fun init(): List<A> = reverse().drop(1).reverse()
 
-    fun reverse(): List<A> = foldLeft(List.invoke(), { acc -> { acc.cons(it) } })
+    fun reverse(): List<A> = foldLeft(invoke(), { acc -> { acc.cons(it) } })
 
     fun <B> foldRight(identity: B, f: (A) -> (B) -> B): B = foldRight(this, identity, f)
 
@@ -25,6 +25,16 @@ sealed class List<A> {
     fun <B> foldLeft(identity: B, f: (B) -> (A) -> B): B = foldLeft(this, identity, f)
 
     fun length(): Int = foldRight(0) { { it + 1 } }
+
+    fun concat(list: List<A>): List<A> = Companion.concat(this, list)
+
+    fun <B> map(f: (A) -> B): List<B> = this.reverse().foldLeft(invoke()) { acc -> { b -> Cons(f(b), acc) }}
+
+    fun filter(p: (A) -> Boolean): List<A> = cofoldRight(invoke(), this) { a:A -> { b:List<A> -> if(p(a)) b.cons(a) else b}}
+
+    fun <B> flatMap(f: (A) -> List<B>): List<B> = flatten(map(f))
+
+    fun filterByFlatMap(p: (A) -> Boolean): List<A> = flatMap { a -> if(p(a)) invoke(a) else Nil as List<A> }
 
     abstract fun isEmpty(): Boolean
 
@@ -58,8 +68,8 @@ sealed class List<A> {
             az.foldRight(Nil as List<A>) { a: A, list: List<A> -> Cons(a, list) }
 
         tailrec fun <A> drop(list: List<A>, n: Int): List<A> = when (list) {
-            List.Nil -> list
-            is List.Cons -> if (n <= 0) list else drop(list.tail, n - 1)
+            Nil -> list
+            is Cons -> if (n <= 0) list else drop(list.tail, n - 1)
         }
 
         tailrec fun <A> dropWhile(list: List<A>, p: (A) -> Boolean): List<A> =
@@ -76,18 +86,31 @@ sealed class List<A> {
 
         fun <A, B> foldRight(list: List<A>, identity: B, f: (A) -> (B) -> B): B =
             when (list) {
-                List.Nil -> identity
-                is List.Cons -> f(list.head)(foldRight(list.tail, identity, f))
+                Nil -> identity
+                is Cons -> f(list.head)(foldRight(list.tail, identity, f))
             }
+
+        tailrec fun <A, B> cofoldRight(acc:B,
+                                       list: List<A>,
+                                       f: (A) -> (B) -> B): B =
+                when (list) {
+                    Nil -> acc
+                    is Cons -> cofoldRight(f(list.head)(acc), list.tail, f)
+                }
 
         tailrec fun <A, B> foldLeft(list: List<A>, identity: B, f: (B) -> (A) -> B): B =
             when (list) {
-                List.Nil -> identity
-                is List.Cons -> foldLeft(list.tail, f(identity)(list.head), f)
+                Nil -> identity
+                is Cons -> foldLeft(list.tail, f(identity)(list.head), f)
             }
+
+        fun <A> concat(list1: List<A>, list2: List<A>): List<A> = list1.reverse().foldLeft(list2) { a -> { b -> a.cons(b)} }
+        fun <A> flatten(list: List<List<A>>): List<A> = list.foldRight(invoke()) { x -> x::concat}
 
         fun sum(list: List<Int>): Int = foldLeft(list, 0) { a -> { b -> a + b } }
         fun product(list: List<Int>): Int = foldLeft(list, 1) { a -> { b -> a * b } }
+        fun triple(list: List<Int>): List<Int> = foldRight(list, invoke(), { a -> { b: List<Int> -> b.cons(a*3) } })
+        fun doubleToString(list: List<Double>): List<String> = foldRight(list, invoke(), { a -> { b: List<String> -> b.cons(a.toString())} })
     }
 
 }
