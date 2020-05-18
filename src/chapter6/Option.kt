@@ -1,5 +1,8 @@
 package chapter6
 
+import chapter5.List
+import java.util.*
+
 sealed class Option<out A> {
 
     abstract fun isEmpty(): Boolean
@@ -79,6 +82,17 @@ sealed class Option<out A> {
                               oc: Option<C>,
                               f: (A) -> (B) -> (C) -> D) =
                 oa.flatMap { a -> ob.flatMap { b -> oc.map { c -> f(a)(b)(c) } } }
+
+        fun <A> sequence(list: List<Option<A>>): Option<List<A>> = traverse(list) { x -> x }
+
+        fun <A, B> traverse(list: List<A>, f: (A) -> Option<B>): Option<List<B>> =
+                list.foldRight(Option(List())) { x ->
+                    { y: Option<List<B>> ->
+                        map2(f(x), y) { a ->
+                            { b: List<B> -> b.cons(a) }
+                        }
+                    }
+                }
 
     }
 
