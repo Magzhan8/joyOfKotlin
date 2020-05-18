@@ -103,22 +103,21 @@ fun main() {
     println(max1)
     val max2 = max(listOf()).orElse { Option(-1) }.map { it * 2 }.getOrElse(1)
     println(max2)
-
 }
 
-val mean: (List<Double>) -> Option<Double> = { list ->
+val mean: (kotlin.collections.List<Double>) -> Option<Double> = { list ->
     when {
         list.isEmpty() -> Option()
         else -> Option(list.sum() / list.size)
     }
 }
 
-val variance: (List<Double>) -> Option<Double> = { list ->
+val variance: (kotlin.collections.List<Double>) -> Option<Double> = { list ->
     mean(list).flatMap { m ->
         mean(list.map { x -> Math.pow((x - m), 2.0) })
     }
 }
 
 
-fun max(list: List<Int>): Option<Int> = Option(list.max())
+fun max(list: kotlin.collections.List<Int>): Option<Int> = Option(list.max())
 fun getDefault(): Int = throw RuntimeException()
