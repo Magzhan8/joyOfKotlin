@@ -38,7 +38,7 @@ sealed class List<A> {
 
     abstract fun isEmpty(): Boolean
 
-    private object Nil : List<Nothing>() {
+    internal object Nil : List<Nothing>() {
 
         override fun isEmpty(): Boolean = true
 
@@ -57,7 +57,7 @@ sealed class List<A> {
         tailrec fun toString(acc: String, list: List<A>): String =
             when (list) {
                 is Nil -> acc
-                is Cons -> toString("$acc${list.head}", list.tail)
+                is Cons -> toString("$acc${list.head}, ", list.tail)
             }
     }
 

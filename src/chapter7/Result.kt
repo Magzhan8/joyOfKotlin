@@ -3,6 +3,7 @@ package chapter7
 import java.io.Serializable
 import java.lang.NullPointerException
 import kotlin.RuntimeException
+import chapter7.Result.Companion.failure as failure1
 
 sealed class Result<out A> : Serializable {
 
@@ -15,12 +16,12 @@ sealed class Result<out A> : Serializable {
 
     fun filter(p: (A) -> Boolean): Result<A> = flatMap {
         if (p(it)) this
-        else failure("Condition not matched")
+        else failure1("Condition not matched")
     }
 
     fun filter(message: String, p: (A) -> Boolean): Result<A> = flatMap {
         if (p(it)) this
-        else failure(message)
+        else failure1(message)
     }
 
     fun exists(p: (A) -> Boolean): Boolean = map(p).getOrElse(false)
@@ -41,9 +42,9 @@ sealed class Result<out A> : Serializable {
                 else -> try {
                     defaultValue()
                 } catch (e: RuntimeException) {
-                    failure(e)
+                    failure<@UnsafeVariance A>(e)
                 } catch (e: Exception) {
-                    failure(RuntimeException(e))
+                    failure<@UnsafeVariance A>(RuntimeException(e))
                 }
             }
 
@@ -81,17 +82,17 @@ sealed class Result<out A> : Serializable {
         override fun <B> map(f: (A) -> B): Result<B> = try {
             Result(f(value))
         } catch (e: RuntimeException) {
-            Failure(e)
+            Failure<B>(e)
         } catch (e: Exception) {
-            Failure(RuntimeException(e))
+            Failure<B>(RuntimeException(e))
         }
 
         override fun <B> flatMap(f: (A) -> Result<B>): Result<B> = try {
             f(value)
         } catch (e: RuntimeException) {
-            Failure(e)
+            Failure<B>(e)
         } catch (e: Exception) {
-            Failure(RuntimeException(e))
+            Failure<B>(RuntimeException(e))
         }
 
         override fun mapFailure(message: String): Result<A> = this
