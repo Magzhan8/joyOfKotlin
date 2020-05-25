@@ -63,6 +63,72 @@ fun <A> getAt(index: Int, list: List<A>): Result<A> {
 }
 
 
+fun <A> splitAt(index: Int, list: List<A>): Pair<List<A>, List<A>> {
+    tailrec fun splitAt(acc: List<A>, tail: List<A>, i: Int): Pair<List<A>, List<A>> =
+            when (list) {
+                List.Nil -> Pair(list.reverse(), acc)
+                is List.Cons ->
+                    if (i == 0) Pair(list.reverse(), acc)
+                    else splitAt(acc.cons(list.head), list.tail, i - 1)
+            }
+    return when {
+        index < 0 -> splitAt(0, list)
+        index > list.length() -> splitAt(list.length(), list)
+        else -> splitAt(index, list)
+    }
+}
+
+fun <A> splitAtWithFold(index: Int, list: List<A>): Pair<List<A>, List<A>> {
+    val ii = when {
+        index < 0 -> 0
+        index > list.length() -> list.length()
+        else -> index
+    }
+    val identity: Triple<List<A>, List<A>, Int> = Triple(List(), List(), ii)
+    val rt = list.foldLeft(identity) {
+        ta: Triple<List<A>, List<A>, Int> ->
+            { a:A ->
+                if(ta.third == 0) Triple(ta.first, ta.second.cons(a), ta.third)
+                else Triple(ta.first.cons(a), ta.second, ta.third - 1)
+            }
+    }
+    return Pair(rt.first.reverse(), rt.second.reverse())
+}
+
+fun <A> hasSubList(sub: List<A>, list: List<A>): Boolean {
+    tailrec fun hasSubList(sub: List<A>, list: List<A>): Boolean =
+            if(list.length() < sub.length() ) false
+            else if(startsWith(sub, list)) true
+            else hasSubList(sub, list.drop(1))
+    return hasSubList(sub, list)
+}
+
+fun <A> startsWith(sub: List<A>, list: List<A>): Boolean {
+    tailrec fun startsWith(sub: List<A>, list: List<A>): Boolean =
+            when(sub) {
+                is List.Nil -> true
+                is List.Cons ->
+                    when(list) {
+                        is List.Nil -> false
+                        is List.Cons ->
+                            if(sub.head == list.head) startsWith(sub.tail, list.tail)
+                            else false
+                    }
+            }
+    return startsWith(sub, list)
+}
+
+fun <A, B> map (list: List<A>, f: (A) -> B): Map<B, List<A>> =
+        list.reverse().foldLeft(mapOf()) {
+            map: Map<B, List<A>> ->
+                { e: A ->
+                    val key = f(e)
+                    map + (key to (map.getOrDefault(key, List())).cons(e))
+                }
+        }
+
+
+
 fun main() {
     val list1 = List("a", "b", "c")
     val list2 = List("d", "e", "f")
@@ -72,4 +138,8 @@ fun main() {
     val result = zipWith(List(1, 2), List(4, 5, 6)) { x -> { y: Int -> Pair(x, y) } }
     println(result)
     println(unzip(result))
+
+    val nList = List(1,2,3,4,5,6,7)
+    val subList = List(6)
+    println(hasSubList(subList, nList))
 }

@@ -38,7 +38,11 @@ sealed class List<A> {
 
     abstract fun isEmpty(): Boolean
 
+    abstract fun <B> foldLeft(identity: B, p: (B) -> Boolean, f: (B) -> (A) -> B): B
+
     internal object Nil : List<Nothing>() {
+
+        override fun <B> foldLeft(identity: B, p: (B) -> Boolean, f: (B) -> (Nothing) -> B): B = identity
 
         override fun isEmpty(): Boolean = true
 
@@ -49,6 +53,15 @@ sealed class List<A> {
         val head: A,
         val tail: List<A>
     ) : List<A>() {
+
+        override fun <B> foldLeft(identity: B, p: (B) -> Boolean, f: (B) -> (A) -> B): B {
+            fun foldLeft(acc: B, list: List<A>): B = when(list) {
+                is Nil -> acc
+                is Cons -> if(p(acc)) acc
+                else foldLeft(f(acc)(list.head), list.tail)
+            }
+            return foldLeft(identity, this)
+        }
 
         override fun isEmpty(): Boolean = false
 
