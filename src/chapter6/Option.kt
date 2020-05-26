@@ -1,7 +1,6 @@
 package chapter6
 
 import chapter5.List
-import java.util.*
 
 sealed class Option<out A> {
 

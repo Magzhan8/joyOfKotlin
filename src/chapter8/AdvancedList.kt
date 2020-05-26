@@ -1,6 +1,7 @@
 package chapter8
 
 import chapter5.List
+import chapter6.Option
 import chapter7.Result
 
 fun <A> flattenResult(list: List<Result<A>>): List<A> =
@@ -85,49 +86,81 @@ fun <A> splitAtWithFold(index: Int, list: List<A>): Pair<List<A>, List<A>> {
         else -> index
     }
     val identity: Triple<List<A>, List<A>, Int> = Triple(List(), List(), ii)
-    val rt = list.foldLeft(identity) {
-        ta: Triple<List<A>, List<A>, Int> ->
-            { a:A ->
-                if(ta.third == 0) Triple(ta.first, ta.second.cons(a), ta.third)
-                else Triple(ta.first.cons(a), ta.second, ta.third - 1)
-            }
+    val rt = list.foldLeft(identity) { ta: Triple<List<A>, List<A>, Int> ->
+        { a: A ->
+            if (ta.third == 0) Triple(ta.first, ta.second.cons(a), ta.third)
+            else Triple(ta.first.cons(a), ta.second, ta.third - 1)
+        }
     }
     return Pair(rt.first.reverse(), rt.second.reverse())
 }
 
 fun <A> hasSubList(sub: List<A>, list: List<A>): Boolean {
     tailrec fun hasSubList(sub: List<A>, list: List<A>): Boolean =
-            if(list.length() < sub.length() ) false
-            else if(startsWith(sub, list)) true
+            if (list.length() < sub.length()) false
+            else if (startsWith(sub, list)) true
             else hasSubList(sub, list.drop(1))
     return hasSubList(sub, list)
 }
 
 fun <A> startsWith(sub: List<A>, list: List<A>): Boolean {
     tailrec fun startsWith(sub: List<A>, list: List<A>): Boolean =
-            when(sub) {
+            when (sub) {
                 is List.Nil -> true
                 is List.Cons ->
-                    when(list) {
+                    when (list) {
                         is List.Nil -> false
                         is List.Cons ->
-                            if(sub.head == list.head) startsWith(sub.tail, list.tail)
+                            if (sub.head == list.head) startsWith(sub.tail, list.tail)
                             else false
                     }
             }
     return startsWith(sub, list)
 }
 
-fun <A, B> map (list: List<A>, f: (A) -> B): Map<B, List<A>> =
-        list.reverse().foldLeft(mapOf()) {
-            map: Map<B, List<A>> ->
-                { e: A ->
-                    val key = f(e)
-                    map + (key to (map.getOrDefault(key, List())).cons(e))
-                }
+fun <A, B> map(list: List<A>, f: (A) -> B): Map<B, List<A>> =
+        list.reverse().foldLeft(mapOf()) { map: Map<B, List<A>> ->
+            { e: A ->
+                val key = f(e)
+                map + (key to (map.getOrDefault(key, List())).cons(e))
+            }
         }
 
+fun <A, S> unfold(z: S, f: (S) -> Option<Pair<A, S>>): List<A> =
+        f(z).map({ v ->
+            unfold(v.second, f).cons(v.first)
+        }).getOrElse(List())
 
+fun <A, S> unfold_(z: S, f: (S) -> Option<Pair<A, S>>): List<A> {
+    fun unfold_(z: S, acc: List<A>): List<A> {
+        val v = f(z)
+        return when (v) {
+            Option.None -> acc
+            is Option.Some -> unfold_(v.value.second, acc.cons(v.value.first))
+        }
+    }
+    return unfold_(z, List()).reverse()
+}
+
+fun range_(start: Int, end: Int): List<Int> =
+        unfold_(start) { a ->
+            if (a < end) Option(Pair(a, a + 1))
+            else Option()
+        }
+
+fun <A> exists(p: (A) -> Boolean, list: List<A>): Boolean =
+        when (list) {
+            List.Nil -> false
+            is List.Cons -> p(list.head) || exists(p, list.tail)
+        }
+
+fun <A> forAll(p: (A) -> Boolean, list: List<A>): Boolean =
+        when (list) {
+            List.Nil -> true
+            is List.Cons ->
+                if (!p(list.head)) false
+                else exists(p, list.tail)
+        }
 
 fun main() {
     val list1 = List("a", "b", "c")
@@ -139,7 +172,8 @@ fun main() {
     println(result)
     println(unzip(result))
 
-    val nList = List(1,2,3,4,5,6,7)
+    val nList = List(1, 2, 3, 4, 5, 6, 7)
     val subList = List(6)
     println(hasSubList(subList, nList))
+    println(range_(-1, 8))
 }
