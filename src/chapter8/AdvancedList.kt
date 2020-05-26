@@ -3,6 +3,9 @@ package chapter8
 import chapter5.List
 import chapter6.Option
 import chapter7.Result
+import java.lang.RuntimeException
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.ExecutorService
 
 fun <A> flattenResult(list: List<Result<A>>): List<A> =
         list.flatMap { a -> a.map { List(it) }.getOrElse { List.invoke() } }
@@ -161,6 +164,74 @@ fun <A> forAll(p: (A) -> Boolean, list: List<A>): Boolean =
                 if (!p(list.head)) false
                 else exists(p, list.tail)
         }
+
+fun <A> splitListAt(index: Int, list: List<A>): List<List<A>> {
+    tailrec fun splitListAt(acc: List<A>, tail: List<A>, i: Int): List<List<A>> =
+            when (tail) {
+                List.Nil -> List.invoke(tail.reverse(), acc)
+                is List.Cons ->
+                    if (i == 0) List(list.reverse(), acc)
+                    else splitListAt(list.cons(tail.head), tail.tail, i - 1)
+            }
+    return when {
+        index < 0 -> splitListAt(0, list)
+        index > list.length() -> splitListAt(list.length(), list)
+        else -> splitListAt(List(), list, index)
+    }
+}
+
+fun <A> divide(depth: Int, list: List<A>): List<List<A>> {
+    tailrec fun divide(tail: List<List<A>>, depth: Int): List<List<A>> =
+            when (tail) {
+                is List.Cons ->
+                    if (tail.head.length() < 2 || depth < 1) tail
+                    else divide(tail.flatMap { x -> splitListAt(x.length() / 2, x) }, depth - 1)
+                else -> tail
+            }
+    return if (list.isEmpty()) List(list)
+           else divide(List(list), depth)
+}
+
+fun <A, B> parFoldLeft(es: ExecutorService,
+                       identity: B,
+                       f: (B) -> (A) -> B,
+                       m: (B) -> (B) -> B,
+                       list: List<A>): Result<B> =
+        try {
+            val result: List<B> = divide(1024, list).map { l: List<A> ->
+                es.submit<B> { l.foldLeft(identity, f) }
+            }.map<B> { fb ->
+                try {
+                    fb.get()
+                } catch (e: InterruptedException) {
+                    throw RuntimeException(e)
+                } catch (e: ExecutionException) {
+                    throw RuntimeException(e)
+                }
+            }
+            Result(result.foldLeft(identity, m))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+
+fun <A, B> parMap(list: List<A>, es: ExecutorService, g: (A) -> B): Result<List<B>> =
+        try {
+            val result = list.map{ x->
+                es.submit<B> { g(x) }
+            }.map<B> { fb ->
+                try {
+                    fb.get()
+                } catch (e: InterruptedException) {
+                    throw RuntimeException(e)
+                } catch (e: ExecutionException) {
+                    throw RuntimeException(e)
+                }
+            }
+            Result(result)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+
 
 fun main() {
     val list1 = List("a", "b", "c")

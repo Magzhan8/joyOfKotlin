@@ -1,5 +1,7 @@
 package chapter5
 
+import chapter8.splitListAt
+
 sealed class List<A> {
 
     fun cons(a: A): List<A> = Cons(a, this)
