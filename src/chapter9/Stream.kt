@@ -23,12 +23,50 @@ sealed class Stream<out A> {
     fun dropWhile(p: (A) -> Boolean): Stream<A> = Companion.dropWhile(this, p)
 
     fun takeWhileViaFoldRight(p: (A) -> Boolean): Stream<A> =
-            foldRight(Lazy { Empty }) { a ->
+            foldRight(Lazy { invoke<A>() }) { a:A ->
                 { b: Lazy<Stream<A>> ->
                     if (p(a)) cons(Lazy { a }, b)
                     else Empty
                 }
             }
+
+    fun headSafeViaFoldRight(): Result<A> = foldRight(Lazy { Result<A>() }, { a -> { Result(a) } })
+
+    fun <B> map(f: (A) -> B): Stream<B> = foldRight(Lazy { invoke<B>() }) { a ->
+        { b: Lazy<Stream<B>> ->
+            cons(Lazy { f(a) }, b)
+        }
+    }
+
+    fun filter(p: (A) -> Boolean): Stream<A> =
+            foldRight(Lazy { invoke<A>() }) { a ->
+                { b: Lazy<Stream<A>> ->
+                    if (p(a)) cons(Lazy { a }, b)
+                    else b()
+                }
+            }
+
+    fun filter2(p: (A) -> Boolean): Stream<A> =
+            dropWhile { x -> !p(x) }.let { stream ->
+                when(stream) {
+                    is Empty -> stream
+                    is Cons -> cons(stream.hd, Lazy { stream.tl().filter2(p) })
+                }
+            }
+
+    fun append2(stream2: Lazy<Stream<@UnsafeVariance A>>): Stream<A> =
+            foldRight(stream2) { a: A ->
+                { b: Lazy<Stream<A>> -> cons(Lazy { a }, b) }
+            }
+
+    fun <B> flatMap(f: (A) -> Stream<B>): Stream<B> =
+            foldRight(Lazy { invoke<B>() }) { a: A ->
+                { b: Lazy<Stream<B>> ->
+                    f(a).append2(b)
+                }
+            }
+
+    fun find(p: (A) -> Boolean): Result<A> = filter(p).head()
 
     private object Empty : Stream<Nothing>() {
 
@@ -116,12 +154,21 @@ sealed class Stream<out A> {
             return toList(list, stream).reverse()
         }
 
+        fun <A, S> unfold(z: S, f: (S) -> Result<Pair<A, S>>): Stream<A> =
+                f(z).map { x -> Stream.cons(Lazy { x.first }, Lazy { unfold(x.second, f) }) }
+                        .getOrElse(Empty)
+
         fun <A> iterate(seed: A, f: (A) -> A): Stream<A> =
                 cons(Lazy { seed }, Lazy { iterate(f(seed), f) })
     }
 
 }
 
+fun fibonacci(): Stream<Int>
+        = Stream.iterate(Pair(1, 1)) { x -> Pair(x.second, x.first + x.second) }.map { it.first }
+
+fun fibonacci2(): Stream<Int>
+        = Stream.unfold(Pair(1,1)) { x -> Result(Pair(x.first, Pair(x.second, x.first + x.second))) }
 
 fun main() {
     val stream = Stream.repeat(::random).dropAtMost(60000).takeAtMost(60000)
@@ -130,4 +177,7 @@ fun main() {
 
     val stream2 = Stream.iterate(1, { it + 1 }).takeWhile { it < 100 }
     println(Stream.toList(List(), stream2))
+
+    val fibb = fibonacci().takeWhile { it < 100 }
+    println(Stream.toList(List(), fibb))
 }
