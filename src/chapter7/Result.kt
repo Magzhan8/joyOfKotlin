@@ -14,6 +14,8 @@ sealed class Result<out A> : Serializable {
                          onFailure: (RuntimeException) -> Unit = {},
                          onEmpty: () -> Unit = {})
 
+    abstract fun mapEmpty(): Result<Any>
+
     fun filter(p: (A) -> Boolean): Result<A> = flatMap {
         if (p(it)) this
         else failure1("Condition not matched")
@@ -61,6 +63,8 @@ sealed class Result<out A> : Serializable {
         override fun forEach(onSuccess: (Nothing) -> Unit, onFailure: (RuntimeException) -> Unit, onEmpty: () -> Unit) =
                 onEmpty()
 
+        override fun mapEmpty(): Result<Any> = Result(Any())
+
     }
 
     class Failure<out A>(internal val exception: RuntimeException) : Result<A>() {
@@ -74,6 +78,8 @@ sealed class Result<out A> : Serializable {
 
         override fun forEach(onSuccess: (A) -> Unit, onFailure: (RuntimeException) -> Unit, onEmpty: () -> Unit) =
                 onFailure(exception)
+
+        override fun mapEmpty(): Result<Any> = Failure(exception)
     }
 
     class Success<out A>(internal val value: A) : Result<A>() {
@@ -99,6 +105,8 @@ sealed class Result<out A> : Serializable {
 
         override fun forEach(onSuccess: (A) -> Unit, onFailure: (RuntimeException) -> Unit, onEmpty: () -> Unit) =
                 onSuccess(value)
+
+        override fun mapEmpty(): Result<Any> = failure("not empty")
     }
 
     companion object {
