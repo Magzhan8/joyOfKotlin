@@ -6,6 +6,10 @@ import kotlin.math.max
 
 sealed class Tree<out A : Comparable<@kotlin.UnsafeVariance A>> {
 
+    internal abstract val value: A
+    internal abstract val left: Tree<A>
+    internal abstract val right: Tree<A>
+
     abstract val size: Int
     abstract val height: Int
 
@@ -74,7 +78,30 @@ sealed class Tree<out A : Comparable<@kotlin.UnsafeVariance A>> {
     fun <B : Comparable<B>> map(f: (A) -> B): Tree<B> =
             foldInOrder(invoke()) { left -> { value -> { right -> Tree(left, f(value), right) } } }
 
+    fun <A> unfold(a: A, f: (A) -> Result<A>): A {
+        tailrec fun <A> unfold(a: Pair<Result<A>, Result<A>>,
+                               f: (A) -> Result<A>): Pair<Result<A>, Result<A>> {
+            val x = a.second.flatMap { f(it) }
+            return when (x) {
+                is Result.Success -> unfold(Pair(a.second, x), f)
+                else -> a
+            }
+        }
+        return Result(a).let { unfold(Pair(it, it), f).second.getOrElse(a) }
+    }
+
     internal object Empty : Tree<Nothing>() {
+
+        override val value: Nothing by lazy {
+            throw IllegalStateException("No value in Empty")
+        }
+        override val left: Tree<Nothing> by lazy {
+            throw IllegalStateException("No left in Empty")
+        }
+        override val right: Tree<Nothing> by lazy {
+            throw IllegalStateException("No right in Empty")
+        }
+
         override fun merge(tree: Tree<Nothing>): Tree<Nothing> = tree
 
         override fun max(): Result<Nothing> = Result.Empty
@@ -105,9 +132,9 @@ sealed class Tree<out A : Comparable<@kotlin.UnsafeVariance A>> {
     }
 
     internal class T<out A : Comparable<@kotlin.UnsafeVariance A>>(
-            internal val left: Tree<A>,
-            internal val value: A,
-            internal val right: Tree<A>) : Tree<A>() {
+            override val left: Tree<A>,
+            override val value: A,
+            override val right: Tree<A>) : Tree<A>() {
         override fun merge(tree: Tree<@UnsafeVariance A>): Tree<A> = when (tree) {
             Empty -> this
             is T -> when {
@@ -202,6 +229,14 @@ sealed class Tree<out A : Comparable<@kotlin.UnsafeVariance A>> {
                 is T -> unBalanceRight(acc, tree.rotateRight())
             }
         }
+
+        fun <A: Comparable<A>> isUnbalanced(tree: Tree<A>): Boolean =
+                when(tree) {
+                    Empty -> false
+                    is T -> Math.abs(tree.left.height - tree.right.height) > (tree.size - 1) % 2
+                }
+
+
 
     }
 
