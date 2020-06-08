@@ -1,5 +1,7 @@
 package chapter10
 
+import chapter10.Tree.Companion.balance
+import chapter10.Tree.Companion.log2nlz
 import chapter5.List
 import chapter7.Result
 import kotlin.math.max
@@ -204,6 +206,11 @@ sealed class Tree<out A : Comparable<@kotlin.UnsafeVariance A>> {
             else -> Tree(a).merge(left).merge(right)
         }
 
+        fun log2nlz(n: Int): Int = when(n) {
+            0 -> 0
+            else -> 31 - Integer.numberOfLeadingZeros(n)
+        }
+
         fun <A : Comparable<A>> lt(first: A, second: A): Boolean = first < second
 
         fun <A : Comparable<A>> lt(first: A, second: A, third: A): Boolean = lt(first, second) && lt(second, third)
@@ -230,10 +237,46 @@ sealed class Tree<out A : Comparable<@kotlin.UnsafeVariance A>> {
             }
         }
 
+        fun <A> unfold(a: A, f: (A) -> Result<A>): A {
+            tailrec fun <A> unfold(a: Pair<Result<A>, Result<A>>,
+                                   f: (A) -> Result<A>): Pair<Result<A>, Result<A>> {
+                val x = a.second.flatMap { f(it) }
+                return when (x) {
+                    is Result.Success -> unfold(Pair(a.second, x), f)
+                    else -> a
+                }
+            }
+            return Result(a).let { unfold(Pair(it, it), f).second.getOrElse(a) }
+        }
+
         fun <A: Comparable<A>> isUnbalanced(tree: Tree<A>): Boolean =
                 when(tree) {
                     Empty -> false
                     is T -> Math.abs(tree.left.height - tree.right.height) > (tree.size - 1) % 2
+                }
+
+        fun <A: Comparable<A>> balance(tree: Tree<A>): Tree<A> =
+                balanceHelper(tree.toListInOrderRight().foldLeft(Empty) {
+                    t: Tree<A> -> { a: A -> T(Empty, a, t) }
+                })
+
+        fun <A: Comparable<A>> balanceHelper(tree: Tree<A>): Tree<A> = when {
+            !tree.isEmpty() && tree.height > log2nlz(tree.size) -> when {
+                Math.abs(tree.left.height - tree.right.height) > 1 -> balanceHelper(balanceFirstLevel(tree))
+                else -> T(balanceHelper(tree.left), tree.value, balanceHelper(tree.right))
+            }
+            else -> tree
+        }
+
+        private fun <A: Comparable<A>> balanceFirstLevel(tree: Tree<A>): Tree<A> =
+                unfold(tree) {t: Tree<A> ->
+                    when  {
+                        isUnbalanced(t) -> when {
+                            tree.right.height > tree.left.height -> Result(t.rotateLeft())
+                            else -> Result(t.rotateRight())
+                        }
+                        else -> Result()
+                    }
                 }
 
 
