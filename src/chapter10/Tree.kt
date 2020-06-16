@@ -1,7 +1,5 @@
 package chapter10
 
-import chapter10.Tree.Companion.balance
-import chapter10.Tree.Companion.log2nlz
 import chapter5.List
 import chapter7.Result
 import kotlin.math.max
@@ -47,6 +45,12 @@ sealed class Tree<out A : Comparable<@kotlin.UnsafeVariance A>> {
             else -> T(left, value, right)
         }
     }
+
+    operator
+    fun minus(element: @UnsafeVariance A): Tree<A> = TODO()
+
+    operator
+    fun get(element: @UnsafeVariance A): Result<A> = TODO()
 
     fun contains(element: @UnsafeVariance A): Boolean = when (this) {
         Empty -> false
