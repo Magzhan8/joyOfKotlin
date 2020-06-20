@@ -68,6 +68,8 @@ sealed class Stream<out A> {
 
     fun find(p: (A) -> Boolean): Result<A> = filter(p).head()
 
+    fun toList(): List<@UnsafeVariance A> = toList(List(), this)
+
     private object Empty : Stream<Nothing>() {
 
         override fun dropAtMost(n: Int): Stream<Nothing> = this

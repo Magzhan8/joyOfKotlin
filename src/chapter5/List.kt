@@ -42,7 +42,11 @@ sealed class List<A> {
 
     abstract fun <B> foldLeft(identity: B, p: (B) -> Boolean, f: (B) -> (A) -> B): B
 
+    abstract fun forEach(ef: (A) -> Unit)
+
     internal object Nil : List<Nothing>() {
+
+        override fun forEach(ef: (Nothing) -> Unit) {}
 
         override fun <B> foldLeft(identity: B, p: (B) -> Boolean, f: (B) -> (Nothing) -> B): B = identity
 
@@ -55,6 +59,19 @@ sealed class List<A> {
         val head: A,
         val tail: List<A>
     ) : List<A>() {
+
+        override fun forEach(ef: (A) -> Unit) {
+            tailrec fun forEach(list: List<A>) {
+                when(list) {
+                    is Nil -> {}
+                    is Cons -> {
+                        ef(head)
+                        forEach(tail)
+                    }
+                }
+            }
+            return forEach(this)
+        }
 
         override fun <B> foldLeft(identity: B, p: (B) -> Boolean, f: (B) -> (A) -> B): B {
             fun foldLeft(acc: B, list: List<A>): B = when(list) {
