@@ -162,6 +162,16 @@ sealed class Stream<out A> {
 
         fun <A> iterate(seed: A, f: (A) -> A): Stream<A> =
                 cons(Lazy { seed }, Lazy { iterate(f(seed), f) })
+
+        fun <A> fill(n: Int, elem: Lazy<A>): Stream<A> {
+            tailrec
+            fun <A> fill(acc: Stream<A>, n: Int, elem: Lazy<A>): Stream<A> =
+                    when {
+                        n <= 0 -> acc
+                        else -> fill(Cons(elem, Lazy { acc }), n - 1, elem)
+                    }
+            return fill(Empty, n, elem)
+        }
     }
 
 }
